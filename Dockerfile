@@ -1,3 +1,3 @@
-FROM wordpress:4.8.1-php7.1-fpm-alpine
+FROM wordpress:4.8.1-php7.1-apache
 
-RUN apk --no-cache add mysql
+RUN apt-get update && apt-get install -y mysql-client && apt-get clean
