@@ -5,4 +5,5 @@ COPY log.ini execution.ini /usr/local/etc/php/conf.d/
 COPY remoteip.conf /etc/apache2/conf-available
 RUN a2enmod remoteip 
 RUN a2enconf remoteip
+RUN sed -i 's/^LogFormat "%h/LogFormat "%a/' /etc/apache2/apache2.conf
 
