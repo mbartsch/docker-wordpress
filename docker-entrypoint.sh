@@ -242,9 +242,14 @@ if (!$mysql->query('CREATE DATABASE IF NOT EXISTS `' . $mysql->real_escape_strin
 if ($usingdbroot) {
   if (!$mysql->query('CREATE USER `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . '`@`%` IDENTIFIED BY "'. $mysql->real_escape_string(getenv('WORDPRESS_DB_PASSWORD')) .'"')) {
     fwrite($stderr, "\n" . 'MySQL "CREATE USER" Error: ' . $mysql->error . "\n");
+  } else {
+    fwrite($stderr, "\n" . 'MySQL "CREATE USER" ' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . "\n");
+
   }
-  if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string($user)  . '`@`%`')) {
+  if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER'))  . '`@`%`')) {
     fwrite($stderr, "\n" . 'MySQL "GRANT ALL" Error: ' . $mysql->error . "\n");
+  } else {
+    fwrite($stderr, "\n" . 'MySQL "GRANT ALL" ' . $mysql->real_escape_string($dbName) . "\n");
   }
 }
 
