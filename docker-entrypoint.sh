@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -euo pipefail
 
 # usage: file_env VAR [DEFAULT]
@@ -101,7 +101,6 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			haveConfig=1
 		fi
 	done
-
 	# linking backwards-compatibility
 	if [ -n "${!MYSQL_ENV_MYSQL_*}" ]; then
 		haveConfig=1
@@ -208,10 +207,19 @@ if (is_numeric($socket)) {
 	$port = (int) $socket;
 	$socket = null;
 }
-$user = getenv('WORDPRESS_DB_USER');
-$pass = getenv('WORDPRESS_DB_PASSWORD');
-$dbName = getenv('WORDPRESS_DB_NAME');
+fwrite($stderr, "\n" . 'Showing Variables ' . $host . ' / ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
 
+if ( getenv('WORDPRESS_DB_ROOT_USER') and getenv('WORDPRESS_DB_ROOT_PASS') ) {
+fwrite($stderr, "\n" . 'ROOT Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
+  $user = getenv('WORDPRESS_DB_ROOT_USER');
+  $pass = getenv('WORDPRESS_DB_ROOT_PASS');
+  $usingdbroot=1;
+} else {
+fwrite($stderr, "\n" . 'Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
+  $user = getenv('WORDPRESS_DB_USER');
+  $pass = getenv('WORDPRESS_DB_PASSWORD');
+}
+$dbName = getenv('WORDPRESS_DB_NAME');
 $maxTries = 10;
 do {
 	$mysql = new mysqli($host, $user, $pass, '', $port, $socket);
@@ -229,6 +237,19 @@ if (!$mysql->query('CREATE DATABASE IF NOT EXISTS `' . $mysql->real_escape_strin
 	fwrite($stderr, "\n" . 'MySQL "CREATE DATABASE" Error: ' . $mysql->error . "\n");
 	$mysql->close();
 	exit(1);
+}
+
+if ($usingdbroot) {
+  if (!$mysql->query('CREATE USER `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . '`@`%` IDENTIFIED BY "'. $mysql->real_escape_string(getenv('WORDPRESS_DB_PASSWORD')) .'"')) {
+    fwrite($stderr, "\n" . 'MySQL "CREATE USER" Error: ' . $mysql->error . "\n");
+    $mysql->close();
+    exit(1);
+  }
+  if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string($user)  . '`@`%`')) {
+    fwrite($stderr, "\n" . 'MySQL "GRANT ALL" Error: ' . $mysql->error . "\n");
+    $mysql->close();
+    exit(1);
+  }
 }
 
 $mysql->close();
