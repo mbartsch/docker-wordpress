@@ -1,4 +1,4 @@
-FROM wordpress:4.9.4-php7.2-apache
+FROM wordpress:4.9.7-apache
 
 RUN apt-get update && apt-get install -y mysql-client bsd-mailx zip unzip imagemagick && apt-get clean
 COPY log.ini execution.ini /usr/local/etc/php/conf.d/
