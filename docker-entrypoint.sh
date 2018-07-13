@@ -204,53 +204,53 @@ $stderr = fopen('php://stderr', 'w');
 list($host, $socket) = explode(':', getenv('WORDPRESS_DB_HOST'), 2);
 $port = 0;
 if (is_numeric($socket)) {
-	$port = (int) $socket;
-	$socket = null;
+    $port = (int) $socket;
+    $socket = null;
 }
 fwrite($stderr, "\n" . 'Showing Variables ' . $host . ' / ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
 
 if ( getenv('WORDPRESS_DB_ROOT_USER') and getenv('WORDPRESS_DB_ROOT_PASS') ) {
-fwrite($stderr, "\n" . 'ROOT Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
-  $user = getenv('WORDPRESS_DB_ROOT_USER');
-  $pass = getenv('WORDPRESS_DB_ROOT_PASS');
-  $usingdbroot=1;
+    fwrite($stderr, "\n" . 'ROOT Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
+    $user = getenv('WORDPRESS_DB_ROOT_USER');
+    $pass = getenv('WORDPRESS_DB_ROOT_PASS');
+    $usingdbroot=1;
 } else {
-fwrite($stderr, "\n" . 'Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
-  $user = getenv('WORDPRESS_DB_USER');
-  $pass = getenv('WORDPRESS_DB_PASSWORD');
+    fwrite($stderr, "\n" . 'Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
+    $user = getenv('WORDPRESS_DB_USER');
+    $pass = getenv('WORDPRESS_DB_PASSWORD');
 }
 $dbName = getenv('WORDPRESS_DB_NAME');
 $maxTries = 10;
 do {
-	$mysql = new mysqli($host, $user, $pass, '', $port, $socket);
-	if ($mysql->connect_error) {
-		fwrite($stderr, "\n" . 'MySQL Connection Error: (' . $mysql->connect_errno . ') ' . $mysql->connect_error . "\n");
-		--$maxTries;
-		if ($maxTries <= 0) {
-			exit(1);
-		}
-		sleep(3);
-	}
+    $mysql = new mysqli($host, $user, $pass, '', $port, $socket);
+    if ($mysql->connect_error) {
+        fwrite($stderr, "\n" . 'MySQL Connection Error: (' . $mysql->connect_errno . ') ' . $mysql->connect_error . "\n");
+        --$maxTries;
+        if ($maxTries <= 0) {
+            exit(1);
+        }
+        sleep(3);
+    }
 } while ($mysql->connect_error);
 
 if (!$mysql->query('CREATE DATABASE IF NOT EXISTS `' . $mysql->real_escape_string($dbName) . '`')) {
-	fwrite($stderr, "\n" . 'MySQL "CREATE DATABASE" Error: ' . $mysql->error . "\n");
-	$mysql->close();
-	exit(1);
+    fwrite($stderr, "\n" . 'MySQL "CREATE DATABASE" Error: ' . $mysql->error . "\n");
+    $mysql->close();
+    exit(1);
 }
 
 if ($usingdbroot) {
-  if (!$mysql->query('CREATE USER `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . '`@`%` IDENTIFIED BY "'. $mysql->real_escape_string(getenv('WORDPRESS_DB_PASSWORD')) .'"')) {
+if (!$mysql->query('CREATE USER `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . '`@`%` IDENTIFIED BY "'. $mysql->real_escape_string(getenv('WORDPRESS_DB_PASSWORD')) .'"')) {
     fwrite($stderr, "\n" . 'MySQL "CREATE USER" Error: ' . $mysql->error . "\n");
-  } else {
+} else {
     fwrite($stderr, "\n" . 'MySQL "CREATE USER" ' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . "\n");
 
-  }
-  if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER'))  . '`@`%`')) {
+}
+if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER'))  . '`@`%`')) {
     fwrite($stderr, "\n" . 'MySQL "GRANT ALL" Error: ' . $mysql->error . "\n");
-  } else {
+} else {
     fwrite($stderr, "\n" . 'MySQL "GRANT ALL" ' . $mysql->real_escape_string($dbName) . "\n");
-  }
+}
 }
 
 $mysql->close();
