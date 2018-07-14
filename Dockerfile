@@ -6,6 +6,7 @@ COPY remoteip.conf /etc/apache2/conf-available
 RUN a2enmod remoteip 
 RUN a2enconf remoteip
 RUN sed -i 's/^LogFormat "%h/LogFormat "%a/' /etc/apache2/apache2.conf
-RUN sed -i 's/LogLevel warn/LogLevel debug/ /etc/apache2/apache2.conf
+RUN sed -i 's/LogLevel warn/LogLevel debug/' /etc/apache2/apache2.conf
+RUN sed -i 's/LogLevel .*/LogLevel debug/' /etc/apache2/sites-available/*
 
 COPY docker-entrypoint.sh /usr/local/bin
