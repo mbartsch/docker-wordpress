@@ -93,6 +93,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		"${uniqueEnvs[@]/#/WORDPRESS_}"
 		WORDPRESS_TABLE_PREFIX
 		WORDPRESS_DEBUG
+                WORDPRESS_HTTPHOST
 	)
 	haveConfig=
 	for e in "${envs[@]}"; do
@@ -183,6 +184,19 @@ EOPHP
 		set_config 'DB_USER' "$WORDPRESS_DB_USER"
 		set_config 'DB_PASSWORD' "$WORDPRESS_DB_PASSWORD"
 		set_config 'DB_NAME' "$WORDPRESS_DB_NAME"
+                set_config 'WP_SITEURL' "https://${WORDPRESS_HTTPHOST}/"
+                set_config 'WP_HOME' "https://${WORDPRESS_HTTPHOST}/"
+		if [ ! -z ${WP_REDIS} ] ; then
+			set_config 'WP_REDIS_CLIENT' "${WP_REDIS_CLIENT}"
+			set_config 'WP_RESID_DATABASE' "${WP_REDIS_DATABASE}"
+			set_config 'WP_CACHE_KEY_SALT' "${WP_REDIS_KEY_SALT}"
+			if [ ! -z ${WP_REDIS_SENTINEL} ] ; then
+				set_config 'WP_REDIS_SENTINEL' "${WP_REDIS_SENTINEL}"
+				set_config 'WP_REDIS_SERVERS' "${WP_REDIS_SERVERS}"
+			else
+				set_config 'WP_REDIS_HOST "${WP_REDIS_HOST}"
+			fi
+		fi
 
 		for unique in "${uniqueEnvs[@]}"; do
 			uniqVar="WORDPRESS_$unique"
