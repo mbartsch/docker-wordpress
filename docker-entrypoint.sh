@@ -136,6 +136,17 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
 define('WP_SITEURL', 'http://' . $_SERVER['HTTP_HOST'] . '/');
 define('WP_HOME', 'http://' . $_SERVER['HTTP_HOST'] . '/');
 
+// Default Values for REDIS
+define( 'WP_SITEURL','http://' . $_SERVER['HTTP_HOST'] . '/');
+define( 'WP_HOME','http://' . $_SERVER['HTTP_HOST'] . '/');
+define( 'WP_REDIS_CLIENT', 'predis' );
+define( 'WP_REDIS_SENTINEL', 'mymaster');
+define( 'WP_REDIS_DATABASE','9');
+define( 'WP_REDIS_SERVERS', [
+	            'tcp://cache-ha-redis-ha-sentinel:26379?database=9',
+		        ] );
+define( 'WP_CACHE_KEY_SALT','mas');
+
 EOPHP
 			chown "$user:$group" wp-config.php
 		fi
@@ -209,7 +220,6 @@ if (is_numeric($socket)) {
     $port = (int) $socket;
     $socket = null;
 }
-fwrite($stderr, "\n" . 'Showing Variables ' . $host . ' / ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
 
 if ( getenv('WORDPRESS_DB_ROOT_USER') and getenv('WORDPRESS_DB_ROOT_PASS') ) {
     fwrite($stderr, "\n" . 'ROOT Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
@@ -264,5 +274,7 @@ EOPHP
 		unset "$e"
 	done
 fi
+
+rm -vf /var/log/apache2/*
 
 exec "$@"
