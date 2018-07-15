@@ -94,6 +94,13 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		WORDPRESS_TABLE_PREFIX
 		WORDPRESS_DEBUG
                 WORDPRESS_HTTPHOST
+		WORDPRESS_EXTRA_CONFIG
+		WORDPRESS_REDIS
+		WORDPRESS_REDIS_CLIENT
+		WORDPRESS_REDIS_SENTINEL
+		WORDPRESS_REDIS_DATABASE
+		WORDPRESS_REDIS_CACHE_KEY_SALT
+		
 	)
 	haveConfig=
 	for e in "${envs[@]}"; do
@@ -116,6 +123,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	fi
 
 	# only touch "wp-config.php" if we have environment-supplied configuration values
+        echo "PRE HAVECONFIG >$haveConfig<"
 	if [ "$haveConfig" ]; then
 		: "${WORDPRESS_DB_HOST:=mysql}"
 		: "${WORDPRESS_DB_USER:=root}"
@@ -126,28 +134,17 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		# https://github.com/docker-library/wordpress/issues/116
 		# https://github.com/WordPress/WordPress/commit/1acedc542fba2482bab88ec70d4bea4b997a92e4
 		sed -ri -e 's/\r$//' wp-config*
-
-		if [ ! -e wp-config.php ]; then
+		echo "############################REPLACE CONFIG ####################"
+		if [ ! -e wp-config.php ] || [ "${WORDPRESS_REPLACE_CONFIG}" == "true" ] ; then
+		echo "		############################ DOING REPLACE CONFIG ####################"
 			awk '/^\/\*.*stop editing.*\*\/$/ && c == 0 { c = 1; system("cat") } { print }' wp-config-sample.php > wp-config.php <<'EOPHP'
 // If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
 // see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-	$_SERVER['HTTPS'] = 'on';
+  $_SERVER['HTTPS'] = 'on';
 }
-
-// Default Values for REDIS
-if (1 == 2) {
-define( 'WP_SITEURL','http://' . $_SERVER['HTTP_HOST'] . '/');
-define( 'WP_HOME','http://' . $_SERVER['HTTP_HOST'] . '/');
-define( 'WP_REDIS_CLIENT', 'predis' );
-define( 'WP_REDIS_SENTINEL', 'mymaster');
-define( 'WP_REDIS_DATABASE','9');
-define( 'WP_REDIS_SERVERS', [
-	            'tcp://cache-ha-redis-ha-sentinel:26379?database=9',
-		        ] );
-define( 'WP_CACHE_KEY_SALT','mas');
-define('WP_SITEURL', 'http://' . $_SERVER['HTTP_HOST'] . '/');
-define('WP_HOME', 'http://' . $_SERVER['HTTP_HOST'] . '/');
+if (isset($ENV['WORDPRESS_EXTRA_CONFIG'])) {
+  $ENV['WORDPRESS_EXTRA_CONFIG']
 }
 EOPHP
 			chown "$user:$group" wp-config.php
@@ -179,6 +176,18 @@ EOPHP
 			fi
 			sed -ri -e "s/($start\s*).*($end)$/\1$(sed_escape_rhs "$(php_escape "$value" "$var_type")")\3/" wp-config.php
 		}
+		set_config_no_rhs_escape() {
+			key="$1"
+			value="$2"
+			var_type="${3:-string}"
+			start="(['\"])$(sed_escape_lhs "$key")\2\s*,"
+			end="\);"
+			if [ "${key:0:1}" = '$' ]; then
+				start="^(\s*)$(sed_escape_lhs "$key")\s*="
+				end=";"
+			fi
+			sed -ri -e "s@($start\s*).*($end)$@\1$(php_escape "$value" "$var_type")\3@" wp-config.php
+		}
 
 		set_config 'DB_HOST' "$WORDPRESS_DB_HOST"
 		set_config 'DB_USER' "$WORDPRESS_DB_USER"
@@ -186,15 +195,14 @@ EOPHP
 		set_config 'DB_NAME' "$WORDPRESS_DB_NAME"
                 set_config 'WP_SITEURL' "//${WORDPRESS_HTTPHOST}/"
                 set_config 'WP_HOME' "//${WORDPRESS_HTTPHOST}/"
-		if [ ! -z "${WP_REDIS}" ] ; then
-			set_config 'WP_REDIS_CLIENT' "${WP_REDIS_CLIENT}"
-			set_config 'WP_RESID_DATABASE' "${WP_REDIS_DATABASE}"
-			set_config 'WP_CACHE_KEY_SALT' "${WP_REDIS_CACHE_KEY_SALT}"
-			if [ ! -z "${WP_REDIS_SENTINEL}" ] ; then
-				set_config 'WP_REDIS_SENTINEL' "${WP_REDIS_SENTINEL}"
-				set_config 'WP_REDIS_SERVERS' "${WP_REDIS_SERVERS}"
+		if [ ! -z "${WORDPRESS_REDIS}" ] ; then
+			set_config 'WP_REDIS_CLIENT' "${WORDPRESS_REDIS_CLIENT}"
+			set_config 'WP_REDIS_DATABASE' "${WORDPRESS_REDIS_DATABASE}"
+			set_config 'WP_CACHE_KEY_SALT' "${WORDPRESS_REDIS_CACHE_KEY_SALT}"
+			if [ ! -z "${WORDPRESS_REDIS_SENTINEL}" ] ; then
+				set_config 'WP_REDIS_SENTINEL' "${WORDPRESS_REDIS_SENTINEL}"
 			else
-				set_config 'WP_REDIS_HOST' "${WP_REDIS_HOST}"
+				set_config 'WP_REDIS_HOST' "${WORDPRESS_REDIS_HOST}"
 			fi
 		fi
 
@@ -283,13 +291,12 @@ if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* T
 $mysql->close();
 EOPHP
 	fi
+        echo "POST HACECONFIG >$haveConfig<"
 
 	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
 	for e in "${envs[@]}"; do
 		unset "$e"
 	done
 fi
-
-rm -vf /var/log/apache2/*
 
 exec "$@"
