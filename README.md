@@ -6,6 +6,7 @@ zip
 unzip
 mysql client
 imagemagick
+pecl-redis
 
 Increase the execution time of php to 301 seconds
 
