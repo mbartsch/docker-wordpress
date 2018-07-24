@@ -49,7 +49,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--skip-check
 		sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
 		if [ $EXIT_CODE -ne 0 ] ; then
-			sudo -u wp-admin -i -- wp db create --dbuser=${MYSQL_ENV_MYSQL_USER:-root} --dbpass=${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}
+			sudo -u wp-admin -i -- wp db create --dbuser=${MYSQL_ENV_MYSQL_USER:${WORDPRESS_DB_USER}} --dbpass=${MYSQL_ENV_MYSQL_ROOT_PASSWORD:${WORDPRESS_DB_PASSWORD}}
 		fi
 		if [ ! -e .htaccess ]; then
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
