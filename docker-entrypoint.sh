@@ -74,7 +74,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			haveConfig=1
 		fi
 	done
-	
+
 	if ! [ -e index.php -a -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
@@ -111,9 +111,9 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
 			--skip-check
 		echo "Checking for DB Access"
-		EXIT_CODE=
-		sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
-		if [ $EXIT_CODE -ne 0 ] ; then
+		#Using bang to permit to fail
+		! sudo -u wp-admin -i -- wp db check
+		if [ $? -ne 0 ] ; then
 			echo "Db Error, Trying to Create DB"
 			sudo -u wp-admin -i -- wp db create
 		fi
