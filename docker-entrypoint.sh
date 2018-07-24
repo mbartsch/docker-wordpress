@@ -109,7 +109,18 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
-			--skip-check
+			--skip-check --extra-php <<PHP
+// If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
+// see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
+if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+	\$_SERVER['HTTPS'] = 'on';
+	define('WP_SITEURL', 'https://' . \$_SERVER['HTTP_HOST']);
+	define('WP_HOME', 'https://' . \$_SERVER['HTTP_HOST']);
+} else {
+	define('WP_SITEURL', 'http://' . \$_SERVER['HTTP_HOST']);
+	define('WP_HOME', 'http://' . \$_SERVER['HTTP_HOST']);
+}
+PHP
 		echo "Checking for DB Access"
 		#Using bang to permit to fail
 		! sudo -u wp-admin -i -- wp db check
@@ -130,39 +141,22 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	# https://github.com/docker-library/wordpress/issues/116
 	# https://github.com/WordPress/WordPress/commit/1acedc542fba2482bab88ec70d4bea4b997a92e4
 
-	sudo -u wp-admin -i -- wp config create \
-		--dbname=${WORDPRESS_DB_NAME:=wordpress} \
-		--dbuser="${WORDPRESS_DB_USER:=root}" \
-		--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
-		--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
-		--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
-		--skip-salts --force --extra-php <<PHP
-// If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
-// see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
-if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-	\$_SERVER['HTTPS'] = 'on';
-	define('WP_SITEURL', 'https://' . \$_SERVER['HTTP_HOST']);
-	define('WP_HOME', 'https://' . \$_SERVER['HTTP_HOST']);
-} else {
-	define('WP_SITEURL', 'http://' . \$_SERVER['HTTP_HOST']);
-	define('WP_HOME', 'http://' . \$_SERVER['HTTP_HOST']);
-}
-PHP
+	sudo -u wp-admin -i -- wp config set DB_NAME ${WORDPRESS_DB_NAME:=wordpress}
+	sudo -u wp-admin -i -- wp config set DB_USER "${WORDPRESS_DB_USER:=root}"
+	sudo -u wp-admin -i -- wp config set DB_PASS "${WORDPRESS_DB_PASSWORD:=}"
+	sudo -u wp-admin -i -- wp config set DB_HOST "${WORDPRESS_DB_HOST:=mysql}"
+	sudo -u wp-admin -i -- wp config set table_prefix "${WORDPRESS_TABLE_PREFIX:=wp_}" \
 
 	if [ "$WORDPRESS_DEBUG" ]; then
 		sudo -u wp-admin -i -- wp config set WP_DEBUG true --raw --type=constant
 	fi
 
 	if [ "$WORDPRESS_PLUGINS" ]; then
-		for plugin in "${WORDPRESS_PLUGINS}" ; do
-			sudo -u wp-admin -i -- wp plugin install --activate ${plugin}
-		done
+		sudo -u wp-admin -i -- wp plugin install --activate ${WORDPRESS_PLUGINS}
 	fi
 
 	if [ "$WORDPRESS_THEMES" ]; then 
-		for theme in "${WORDPRESS_THEMES}"; do 
-			sudo -u wp-admin -i -- wp theme install ${theme}
-		done
+ 		sudo -u wp-admin -i -- wp theme install ${WORDPRESS_THEMES}
 	fi
 	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
 	for e in "${envs[@]}"; do
