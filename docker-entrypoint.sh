@@ -143,7 +143,7 @@ PHP
 
 	sudo -u wp-admin -i -- wp config set DB_NAME ${WORDPRESS_DB_NAME:=wordpress}
 	sudo -u wp-admin -i -- wp config set DB_USER "${WORDPRESS_DB_USER:=root}"
-	sudo -u wp-admin -i -- wp config set DB_PASS "${WORDPRESS_DB_PASSWORD:=}"
+	sudo -u wp-admin -i -- wp config set DB_PASSWORD "${WORDPRESS_DB_PASSWORD:=}"
 	sudo -u wp-admin -i -- wp config set DB_HOST "${WORDPRESS_DB_HOST:=mysql}"
 	sudo -u wp-admin -i -- wp config set table_prefix "${WORDPRESS_TABLE_PREFIX:=wp_}" \
 
