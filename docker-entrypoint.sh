@@ -148,7 +148,7 @@ PHP
 	for e in "${envs[@]}"; do
 		unset "$e"
 	done
-	find . -owner wp-admin -exec chown www-data {} ;
+	find . -user wp-admin -exec chown www-data {} ;
 fi
 
 exec "$@"
