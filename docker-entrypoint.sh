@@ -47,6 +47,12 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
 			--skip-check
+		sudo -u wp-admin -i -- wp core install \
+			--url=${WORDPRESS_HTTP_HOST} \
+			--title=${WORDPRESS_SITE_TITLE} \
+			--admin_user=${WORDPRESS_ADMIN_USER} \
+			--admin_password=${WORDPRESS_ADMIN_PASS} \
+			--admin_email=${WORDPRESS_ADMIN_EMAIL}
 		if [ ! -e .htaccess ]; then
 			echo "Creating HTACCESS File	"
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
@@ -72,6 +78,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		fi
 	fi
 	echo "Checking for DB Access"
+	EXIT_CODE=
 	sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
 	if [ $EXIT_CODE -ne 0 ] ; then
 		echo "Db Error, Trying to Create DB"
