@@ -126,7 +126,7 @@ PHP
 		! sudo -u wp-admin -i -- wp db check
 		if [ $? -ne 0 ] ; then
 			echo "Db Error, Trying to Create DB"
-			sudo -u wp-admin -i -- wp db create
+			! sudo -u wp-admin -i -- wp db create
 		fi
 		sudo -u wp-admin -i -- wp core install \
 			--url="${WORDPRESS_HTTP_HOST}" \
