@@ -47,8 +47,8 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
 			--skip-check
-		sudo -u wp-admin -i -- wp db check
-		if [ $? -ne 0 ] ; then
+		sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
+		if [ $EXIT_CODE -ne 0 ] ; then
 			sudo -u wp-admin -i -- wp db create --dbuser=${MYSQL_ENV_MYSQL_USER:-root} --dbpass=${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}
 		fi
 		if [ ! -e .htaccess ]; then
