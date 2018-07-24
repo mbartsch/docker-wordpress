@@ -133,7 +133,7 @@ EOPHP
 			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
-			--skip-salts
+			--skip-salts --force
 
 		if [ "$WORDPRESS_DEBUG" ]; then
 			wp config set WP_DEBUG true --raw --type=constant
