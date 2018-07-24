@@ -41,18 +41,15 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	fi
 
 	if ! [ -e index.php -a -e wp-includes/version.php ]; then
-		echo >&2 "WordPress not found in $PWD - copying now..."
-		if [ "$(ls -A)" ]; then
-			echo >&2 "WARNING: $PWD is not empty - press Ctrl+C now if this is an error!"
-			( set -x; ls -A; sleep 10 )
-		fi
-		tar --create \
-			--file - \
-			--one-file-system \
-			--directory /usr/src/wordpress \
-			--owner "$user" --group "$group" \
-			. | tar --extract --file -
-		echo >&2 "Complete! WordPress has been successfully copied to $PWD"
+		echo >&2 "WordPress not found in $PWD - installing now..."
+		sudo -u wp-admin -i -- wp core download
+		sudo -u wp-admin -i -- wp config create \
+			--dbname=${WORDPRESS_DB_NAME:=wordpress} \
+			--dbuser="${WORDPRESS_DB_USER:=root}" \
+			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
+			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
+			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}"
+		
 		if [ ! -e .htaccess ]; then
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
 			cat > .htaccess <<-'EOF'
@@ -64,6 +61,12 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 				RewriteCond %{REQUEST_FILENAME} !-f
 				RewriteCond %{REQUEST_FILENAME} !-d
 				RewriteRule . /index.php [L]
+				</IfModule>
+				<IfModule mod_php.c>
+				php_value upload_max_filesize 64M
+				php_value post_max_size 64M
+				php_value max_execution_time 300
+				php_value max_input_time 300
 				</IfModule>
 				# END WordPress
 			EOF
