@@ -39,22 +39,8 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	if ! [ -e index.php -a -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
-		sudo -u wp-admin -i -- wp core download
-		sudo -u wp-admin -i -- wp config create \
-			--dbname=${WORDPRESS_DB_NAME:=wordpress} \
-			--dbuser="${WORDPRESS_DB_USER:=root}" \
-			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
-			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
-			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
-			--skip-check
-		sudo -u wp-admin -i -- wp core install \
-			--url="${WORDPRESS_HTTP_HOST}" \
-			--title="${WORDPRESS_SITE_TITLE}" \
-			--admin_user="${WORDPRESS_ADMIN_USER}" \
-			--admin_password="${WORDPRESS_ADMIN_PASS}" \
-			--admin_email="${WORDPRESS_ADMIN_EMAIL}"
 		if [ ! -e .htaccess ]; then
-			echo "Creating HTACCESS File	"
+			echo -n "Creating HTACCESS File...."
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
 			cat > .htaccess <<-'EOF'
 				# BEGIN WordPress
@@ -75,15 +61,31 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 				# END WordPress
 			EOF
 			chown "$user:$group" .htaccess
+			echo "Done."
 		fi
+		sudo -u wp-admin -i -- wp core download
+		sudo -u wp-admin -i -- wp config create \
+			--dbname=${WORDPRESS_DB_NAME:=wordpress} \
+			--dbuser="${WORDPRESS_DB_USER:=root}" \
+			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
+			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
+			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
+			--skip-check
+		echo "Checking for DB Access"
+		EXIT_CODE=
+		sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
+		if [ $EXIT_CODE -ne 0 ] ; then
+			echo "Db Error, Trying to Create DB"
+			sudo -u wp-admin -i -- wp db create
+		fi
+		sudo -u wp-admin -i -- wp core install \
+			--url="${WORDPRESS_HTTP_HOST}" \
+			--title="${WORDPRESS_SITE_TITLE}" \
+			--admin_user="${WORDPRESS_ADMIN_USER}" \
+			--admin_password="${WORDPRESS_ADMIN_PASS}" \
+			--admin_email="${WORDPRESS_ADMIN_EMAIL}"
 	fi
-	echo "Checking for DB Access"
-	EXIT_CODE=
-	sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
-	if [ $EXIT_CODE -ne 0 ] ; then
-		echo "Db Error, Trying to Create DB"
-		sudo -u wp-admin -i -- wp db create
-	fi
+
 	# TODO handle WordPress upgrades magically in the same way, but only if wp-includes/version.php's $wp_version is less than /usr/src/wordpress/wp-includes/version.php's $wp_version
 
 	# allow any of these "Authentication Unique Keys and Salts." to be specified via
@@ -120,7 +122,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	# https://github.com/WordPress/WordPress/commit/1acedc542fba2482bab88ec70d4bea4b997a92e4
 	sed -ri -e 's/\r$//' wp-config*
 
-	if [ ! -e wp-config.php ]; then
+	if [ -e wp-config.php ]; then
 			awk '/^\/\*.*stop editing.*\*\/$/ && c == 0 { c = 1; system("cat") } { print }' wp-config-sample.php > wp-config.php <<'EOPHP'
 // If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
 // see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
