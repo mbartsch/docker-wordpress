@@ -130,8 +130,8 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 		--skip-salts --force --extra-php <<PHP
 // If we're behind a proxy server and using HTTPS, we need to alert Wordpress of that fact
 // see also http://codex.wordpress.org/Administration_Over_SSL#Using_a_Reverse_Proxy
-if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
-	$_SERVER['HTTPS'] = 'on';
+if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+	\$_SERVER['HTTPS'] = 'on';
 	define('WP_SITEURL', 'https://' . $_SERVER['HTTP_HOST'] . '/');
 	define('WP_HOME', 'https://' . $_SERVER['HTTP_HOST'] . '/');
 } else {
@@ -148,6 +148,7 @@ PHP
 	for e in "${envs[@]}"; do
 		unset "$e"
 	done
+	find . -owner wp-admin -exec chown www-data {} ;
 fi
 
 exec "$@"
