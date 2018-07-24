@@ -42,6 +42,7 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 
 	if ! [ -e index.php -a -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
+		chmod g+w /var/www/html
 		sudo -u wp-admin -i -- wp core download
 		sudo -u wp-admin -i -- wp config create \
 			--dbname=${WORDPRESS_DB_NAME:=wordpress} \
