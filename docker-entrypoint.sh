@@ -48,11 +48,11 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
 			--skip-check
 		sudo -u wp-admin -i -- wp core install \
-			--url=${WORDPRESS_HTTP_HOST} \
-			--title=${WORDPRESS_SITE_TITLE} \
-			--admin_user=${WORDPRESS_ADMIN_USER} \
-			--admin_password=${WORDPRESS_ADMIN_PASS} \
-			--admin_email=${WORDPRESS_ADMIN_EMAIL}
+			--url="${WORDPRESS_HTTP_HOST}" \
+			--title="${WORDPRESS_SITE_TITLE}" \
+			--admin_user="${WORDPRESS_ADMIN_USER}" \
+			--admin_password="${WORDPRESS_ADMIN_PASS}" \
+			--admin_email="${WORDPRESS_ADMIN_EMAIL}"
 		if [ ! -e .htaccess ]; then
 			echo "Creating HTACCESS File	"
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
