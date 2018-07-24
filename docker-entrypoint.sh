@@ -26,10 +26,6 @@ file_env() {
 if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	if [ "$(id -u)" = '0' ]; then
 		case "$1" in
-			apache2*)
-				user="${APACHE_RUN_USER:-www-data}"
-				group="${APACHE_RUN_GROUP:-www-data}"
-				;;
 			*) # php-fpm
 				user='www-data'
 				group='www-data'
@@ -49,8 +45,12 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbuser="${WORDPRESS_DB_USER:=root}" \
 			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
-			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}"
-		
+			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
+			--skip-check
+		sudo -u wp-admin -i -- wp db check
+		if [ $? -ne 0 ] ; then
+			sudo -u wp-admin -i -- wp db create --dbuser=${MYSQL_ENV_MYSQL_USER:-root} --dbpass=${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}
+		fi
 		if [ ! -e .htaccess ]; then
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
 			cat > .htaccess <<-'EOF'
@@ -105,25 +105,6 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			haveConfig=1
 		fi
 	done
-	# linking backwards-compatibility
-	if [ -n "${!MYSQL_ENV_MYSQL_*}" ]; then
-		haveConfig=1
-		# host defaults to "mysql" below if unspecified
-		: "${WORDPRESS_DB_USER:=${MYSQL_ENV_MYSQL_USER:-root}}"
-		if [ "$WORDPRESS_DB_USER" = 'root' ]; then
-			: "${WORDPRESS_DB_PASSWORD:=${MYSQL_ENV_MYSQL_ROOT_PASSWORD:-}}"
-		else
-			: "${WORDPRESS_DB_PASSWORD:=${MYSQL_ENV_MYSQL_PASSWORD:-}}"
-		fi
-		: "${WORDPRESS_DB_NAME:=${MYSQL_ENV_MYSQL_DATABASE:-}}"
-	fi
-
-	# only touch "wp-config.php" if we have environment-supplied configuration values
-	if [ "$haveConfig" ]; then
-		: "${WORDPRESS_DB_HOST:=mysql}"
-		: "${WORDPRESS_DB_USER:=root}"
-		: "${WORDPRESS_DB_PASSWORD:=}"
-		: "${WORDPRESS_DB_NAME:=wordpress}"
 
 		# version 4.4.1 decided to switch to windows line endings, that breaks our seds and awks
 		# https://github.com/docker-library/wordpress/issues/116
@@ -146,123 +127,17 @@ EOPHP
 			chown "$user:$group" wp-config.php
 		fi
 
-		# see http://stackoverflow.com/a/2705678/433558
-		sed_escape_lhs() {
-			echo "$@" | sed -e 's/[]\/$*.^|[]/\\&/g'
-		}
-		sed_escape_rhs() {
-			echo "$@" | sed -e 's/[\/&]/\\&/g'
-		}
-		php_escape() {
-			local escaped="$(php -r 'var_export(('"$2"') $argv[1]);' -- "$1")"
-			if [ "$2" = 'string' ] && [ "${escaped:0:1}" = "'" ]; then
-				escaped="${escaped//$'\n'/"' + \"\\n\" + '"}"
-			fi
-			echo "$escaped"
-		}
-		set_config() {
-			key="$1"
-			value="$2"
-			var_type="${3:-string}"
-			start="(['\"])$(sed_escape_lhs "$key")\2\s*,"
-			end="\);"
-			if [ "${key:0:1}" = '$' ]; then
-				start="^(\s*)$(sed_escape_lhs "$key")\s*="
-				end=";"
-			fi
-			sed -ri -e "s/($start\s*).*($end)$/\1$(sed_escape_rhs "$(php_escape "$value" "$var_type")")\3/" wp-config.php
-		}
-
-		set_config 'DB_HOST' "$WORDPRESS_DB_HOST"
-		set_config 'DB_USER' "$WORDPRESS_DB_USER"
-		set_config 'DB_PASSWORD' "$WORDPRESS_DB_PASSWORD"
-		set_config 'DB_NAME' "$WORDPRESS_DB_NAME"
-
-		for unique in "${uniqueEnvs[@]}"; do
-			uniqVar="WORDPRESS_$unique"
-			if [ -n "${!uniqVar}" ]; then
-				set_config "$unique" "${!uniqVar}"
-			else
-				# if not specified, let's generate a random value
-				currentVal="$(sed -rn -e "s/define\((([\'\"])$unique\2\s*,\s*)(['\"])(.*)\3\);/\4/p" wp-config.php)"
-				if [ "$currentVal" = 'put your unique phrase here' ]; then
-					set_config "$unique" "$(head -c1m /dev/urandom | sha1sum | cut -d' ' -f1)"
-				fi
-			fi
-		done
-
-		if [ "$WORDPRESS_TABLE_PREFIX" ]; then
-			set_config '$table_prefix' "$WORDPRESS_TABLE_PREFIX"
-		fi
+		sudo -u wp-admin -i -- wp config create \
+			--dbname=${WORDPRESS_DB_NAME:=wordpress} \
+			--dbuser="${WORDPRESS_DB_USER:=root}" \
+			--dbpass="${WORDPRESS_DB_PASSWORD:=}" \
+			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
+			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
+			--skip-salts
 
 		if [ "$WORDPRESS_DEBUG" ]; then
-			set_config 'WP_DEBUG' 1 boolean
+			wp config set WP_DEBUG true --raw --type=constant
 		fi
-
-		TERM=dumb php -- <<'EOPHP'
-<?php
-// database might not exist, so let's try creating it (just to be safe)
-
-$stderr = fopen('php://stderr', 'w');
-
-// https://codex.wordpress.org/Editing_wp-config.php#MySQL_Alternate_Port
-//   "hostname:port"
-// https://codex.wordpress.org/Editing_wp-config.php#MySQL_Sockets_or_Pipes
-//   "hostname:unix-socket-path"
-list($host, $socket) = explode(':', getenv('WORDPRESS_DB_HOST'), 2);
-$port = 0;
-if (is_numeric($socket)) {
-    $port = (int) $socket;
-    $socket = null;
-}
-fwrite($stderr, "\n" . 'Showing Variables ' . $host . ' / ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
-
-if ( getenv('WORDPRESS_DB_ROOT_USER') and getenv('WORDPRESS_DB_ROOT_PASS') ) {
-    fwrite($stderr, "\n" . 'ROOT Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
-    $user = getenv('WORDPRESS_DB_ROOT_USER');
-    $pass = getenv('WORDPRESS_DB_ROOT_PASS');
-    $usingdbroot=1;
-} else {
-    fwrite($stderr, "\n" . 'Showing Variables ' . getenv('WORDPRESS_DB_ROOT_USER') . ' AND ' . getenv('WORDPRESS_DB_ROOT_PASS') ."\n");
-    $user = getenv('WORDPRESS_DB_USER');
-    $pass = getenv('WORDPRESS_DB_PASSWORD');
-}
-$dbName = getenv('WORDPRESS_DB_NAME');
-$maxTries = 10;
-do {
-    $mysql = new mysqli($host, $user, $pass, '', $port, $socket);
-    if ($mysql->connect_error) {
-        fwrite($stderr, "\n" . 'MySQL Connection Error: (' . $mysql->connect_errno . ') ' . $mysql->connect_error . "\n");
-        --$maxTries;
-        if ($maxTries <= 0) {
-            exit(1);
-        }
-        sleep(3);
-    }
-} while ($mysql->connect_error);
-
-if (!$mysql->query('CREATE DATABASE IF NOT EXISTS `' . $mysql->real_escape_string($dbName) . '`')) {
-    fwrite($stderr, "\n" . 'MySQL "CREATE DATABASE" Error: ' . $mysql->error . "\n");
-    $mysql->close();
-    exit(1);
-}
-
-if ($usingdbroot) {
-if (!$mysql->query('CREATE USER `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . '`@`%` IDENTIFIED BY "'. $mysql->real_escape_string(getenv('WORDPRESS_DB_PASSWORD')) .'"')) {
-    fwrite($stderr, "\n" . 'MySQL "CREATE USER" Error: ' . $mysql->error . "\n");
-} else {
-    fwrite($stderr, "\n" . 'MySQL "CREATE USER" ' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER')) . "\n");
-
-}
-if (!$mysql->query('GRANT ALL ON ' . $mysql->real_escape_string($dbName) . '.* TO `' . $mysql->real_escape_string(getenv('WORDPRESS_DB_USER'))  . '`@`%`')) {
-    fwrite($stderr, "\n" . 'MySQL "GRANT ALL" Error: ' . $mysql->error . "\n");
-} else {
-    fwrite($stderr, "\n" . 'MySQL "GRANT ALL" ' . $mysql->real_escape_string($dbName) . "\n");
-}
-}
-
-$mysql->close();
-EOPHP
 	fi
 
 	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
