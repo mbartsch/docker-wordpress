@@ -47,10 +47,6 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			--dbhost="${WORDPRESS_DB_HOST:=mysql}" \
 			--dbprefix="${WORDPRESS_TABLE_PREFIX:=wp_}" \
 			--skip-check
-		sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
-		if [ $EXIT_CODE -ne 0 ] ; then
-			sudo -u wp-admin -i -- wp db create
-		fi
 		if [ ! -e .htaccess ]; then
 			echo "Creating HTACCESS File	"
 			# NOTE: The "Indexes" option is disabled in the php:apache base image
@@ -75,7 +71,12 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 			chown "$user:$group" .htaccess
 		fi
 	fi
-
+	echo "Checking for DB Access"
+	sudo -u wp-admin -i -- wp db check || EXIT_CODE=$? && true
+	if [ $EXIT_CODE -ne 0 ] ; then
+		echo "Db Error, Trying to Create DB"
+		sudo -u wp-admin -i -- wp db create
+	fi
 	# TODO handle WordPress upgrades magically in the same way, but only if wp-includes/version.php's $wp_version is less than /usr/src/wordpress/wp-includes/version.php's $wp_version
 
 	# allow any of these "Authentication Unique Keys and Salts." to be specified via
