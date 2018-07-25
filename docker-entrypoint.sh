@@ -149,6 +149,8 @@ PHP
 
 	if [ "$WORDPRESS_DEBUG" ]; then
 		sudo -u wp-admin -i -- wp config set WP_DEBUG true --raw --type=constant
+	else
+		sudo -u wp-admin -i -- wp config set WP_DEBUG false --raw --type=constant
 	fi
 
 	if [ "$WORDPRESS_PLUGINS" ]; then
@@ -166,10 +168,10 @@ PHP
 	find . -user wp-admin -exec chown www-data {} \;
 	echo "Done."
 	echo -n "Reseting .wp-cli to wp-admin...."
-	chown -R wp-admin .wp-cli
+	! chown -R wp-admin .wp-cli
 	echo "Done."
 	echo -n "Setting group write permissions..."
-	chmod -R g+w *
+	find . \! -perm g+w -exec chmod g+w {} \;
 	echo "Done."
 fi
 
