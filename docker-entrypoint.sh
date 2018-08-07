@@ -24,7 +24,7 @@ file_env() {
 }
 
 install_wp () {
-	if ! [ -e index.php -a -e wp-includes/version.php ]; then
+	if [ ! -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
 		if [ ! -e .htaccess ]; then
@@ -83,6 +83,14 @@ PHP
 			--admin_user="${WORDPRESS_ADMIN_USER}" \
 			--admin_password="${WORDPRESS_ADMIN_PASS}" \
 			--admin_email="${WORDPRESS_ADMIN_EMAIL}"
+
+		if [ "$WORDPRESS_PLUGINS" ]; then
+			sudo -u wp-admin -i -- wp plugin install --activate ${WORDPRESS_PLUGINS}
+		fi
+
+		if [ "$WORDPRESS_THEMES" ]; then 
+			sudo -u wp-admin -i -- wp theme install ${WORDPRESS_THEMES}
+		fi
 	fi
 
 
@@ -102,13 +110,7 @@ PHP
 		sudo -u wp-admin -i -- wp config set WP_DEBUG false --raw --type=constant
 	fi
 
-	if [ "$WORDPRESS_PLUGINS" ]; then
-		sudo -u wp-admin -i -- wp plugin install --activate ${WORDPRESS_PLUGINS}
-	fi
 
-	if [ "$WORDPRESS_THEMES" ]; then 
- 		sudo -u wp-admin -i -- wp theme install ${WORDPRESS_THEMES}
-	fi
 	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
 
 	echo -n "Reset permissions to the www-data user..."
@@ -122,6 +124,7 @@ PHP
 	echo "Done."
 	
 }
+
 if [ "$1" == apache2* ] || [ "$1" == php-fpm ] || [ "$1" == install ] ; then
 	if [ "$(id -u)" = '0' ]; then
 		case "$1" in
