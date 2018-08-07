@@ -5,6 +5,34 @@ set -euo pipefail
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
 # (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
 #  "$XYZ_DB_PASSWORD" from a file, especially for Docker's secrets feature)
+mkhtaccess() {
+
+echo -n "Creating HTACCESS File...."
+# NOTE: The "Indexes" option is disabled in the php:apache base image
+cat > .htaccess <<EOF
+# BEGIN WordPress
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress
+<IfModule mod_php.c>
+php_value upload_max_filesize 64M
+php_value post_max_size 64M
+php_value max_execution_time 300
+php_value max_input_time 300
+</IfModule>
+EOF
+chown "$user:$group" .htaccess
+echo "Done."
+
+}
+
+
 file_env() {
 	local var="$1"
 	local fileVar="${var}_FILE"
@@ -24,32 +52,21 @@ file_env() {
 }
 
 install_wp () {
+	echo "Running INSTALL phase..."
+	echo -n "Reset permissions to the www-data user..."
+	find . -user wp-admin -exec chown www-data {} \;
+	echo "Done."
+	echo -n "Reseting .wp-cli to wp-admin...."
+	! chown -R wp-admin .wp-cli
+	echo "Done."
+	echo -n "Setting group write permissions..."
+	find . \! -perm -g=w -exec chmod g+w {} \;
+	echo "Done."
 	if [ ! -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
 		if [ ! -e .htaccess ]; then
-			echo -n "Creating HTACCESS File...."
-			# NOTE: The "Indexes" option is disabled in the php:apache base image
-			cat > .htaccess <<-'EOF'
-				# BEGIN WordPress
-				<IfModule mod_rewrite.c>
-				RewriteEngine On
-				RewriteBase /
-				RewriteRule ^index\.php$ - [L]
-				RewriteCond %{REQUEST_FILENAME} !-f
-				RewriteCond %{REQUEST_FILENAME} !-d
-				RewriteRule . /index.php [L]
-				</IfModule>
-				<IfModule mod_php.c>
-				php_value upload_max_filesize 64M
-				php_value post_max_size 64M
-				php_value max_execution_time 300
-				php_value max_input_time 300
-				</IfModule>
-				# END WordPress
-			EOF
-			chown "$user:$group" .htaccess
-			echo "Done."
+			mkhtaccess
 		fi
 		sudo -u wp-admin -i -- wp core download
 		sudo -u wp-admin -i -- wp config create \
@@ -120,8 +137,9 @@ PHP
 	! chown -R wp-admin .wp-cli
 	echo "Done."
 	echo -n "Setting group write permissions..."
-	find . \! -perm g+w -exec chmod g+w {} \;
+	find . \! -perm -g=w -exec chmod g+w {} \;
 	echo "Done."
+	exit 0
 	
 }
 
