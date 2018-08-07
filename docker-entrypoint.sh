@@ -23,58 +23,7 @@ file_env() {
 	unset "$fileVar"
 }
 
-if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
-	if [ "$(id -u)" = '0' ]; then
-		case "$1" in
-			*) # php-fpm
-				user='www-data'
-				group='www-data'
-				;;
-		esac
-	else
-		user="$(id -u)"
-		group="$(id -g)"
-	fi
-
-	# TODO handle WordPress upgrades magically in the same way, but only if wp-includes/version.php's $wp_version is less than /usr/src/wordpress/wp-includes/version.php's $wp_version
-
-	# allow any of these "Authentication Unique Keys and Salts." to be specified via
-	# environment variables with a "WORDPRESS_" prefix (ie, "WORDPRESS_AUTH_KEY")
-	uniqueEnvs=(
-		AUTH_KEY
-		SECURE_AUTH_KEY
-		LOGGED_IN_KEY
-		NONCE_KEY
-		AUTH_SALT
-		SECURE_AUTH_SALT
-		LOGGED_IN_SALT
-		NONCE_SALT
-	)
-	envs=(
-		WORDPRESS_DB_HOST
-		WORDPRESS_DB_USER
-		WORDPRESS_DB_PASSWORD
-		WORDPRESS_DB_NAME
-		WORDPRESS_TABLE_PREFIX
-		WORDPRESS_DEBUG
-		WORDPRESS_PLUGINS
-		WORDPRESS_THEMES
-		WORDPRESS_SITE_TITLE
-		WORDPRESS_ADMIN_USER
-		WORDPRESS_ADMIN_PASS
-		WORDPRESS_ADMIN_EMAIL
-		WORDPRESS_HTTP_HOST
-		"${uniqueEnvs[@]/#/WORDPRESS_}"
-
-	)
-	haveConfig=
-	for e in "${envs[@]}"; do
-		file_env "$e"
-		if [ -z "$haveConfig" ] && [ -n "${!e}" ]; then
-			haveConfig=1
-		fi
-	done
-
+install_wp () {
 	if ! [ -e index.php -a -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
@@ -161,9 +110,7 @@ PHP
  		sudo -u wp-admin -i -- wp theme install ${WORDPRESS_THEMES}
 	fi
 	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
-	for e in "${envs[@]}"; do
-		unset "$e"
-	done
+
 	echo -n "Reset permissions to the www-data user..."
 	find . -user wp-admin -exec chown www-data {} \;
 	echo "Done."
@@ -173,6 +120,68 @@ PHP
 	echo -n "Setting group write permissions..."
 	find . \! -perm g+w -exec chmod g+w {} \;
 	echo "Done."
+	
+}
+if [ "$1" == apache2* ] || [ "$1" == php-fpm ] || [ "$1" == install ] ; then
+	if [ "$(id -u)" = '0' ]; then
+		case "$1" in
+			*) # php-fpm
+				user='www-data'
+				group='www-data'
+				;;
+		esac
+	else
+		user="$(id -u)"
+		group="$(id -g)"
+	fi
+
+	# TODO handle WordPress upgrades magically in the same way, but only if wp-includes/version.php's $wp_version is less than /usr/src/wordpress/wp-includes/version.php's $wp_version
+
+	# allow any of these "Authentication Unique Keys and Salts." to be specified via
+	# environment variables with a "WORDPRESS_" prefix (ie, "WORDPRESS_AUTH_KEY")
+	uniqueEnvs=(
+		AUTH_KEY
+		SECURE_AUTH_KEY
+		LOGGED_IN_KEY
+		NONCE_KEY
+		AUTH_SALT
+		SECURE_AUTH_SALT
+		LOGGED_IN_SALT
+		NONCE_SALT
+	)
+	envs=(
+		WORDPRESS_DB_HOST
+		WORDPRESS_DB_USER
+		WORDPRESS_DB_PASSWORD
+		WORDPRESS_DB_NAME
+		WORDPRESS_TABLE_PREFIX
+		WORDPRESS_DEBUG
+		WORDPRESS_PLUGINS
+		WORDPRESS_THEMES
+		WORDPRESS_SITE_TITLE
+		WORDPRESS_ADMIN_USER
+		WORDPRESS_ADMIN_PASS
+		WORDPRESS_ADMIN_EMAIL
+		WORDPRESS_HTTP_HOST
+		"${uniqueEnvs[@]/#/WORDPRESS_}"
+
+	)
+	haveConfig=
+	for e in "${envs[@]}"; do
+		file_env "$e"
+		if [ -z "$haveConfig" ] && [ -n "${!e}" ]; then
+			haveConfig=1
+		fi
+	done
+
+	if [ "$1" == install ] ; then
+		install_wp
+	fi
+
+	for e in "${envs[@]}"; do
+		unset "$e"
+	done
+
 fi
 
 exec "$@"
