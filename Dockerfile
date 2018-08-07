@@ -1,4 +1,4 @@
-FROM wordpress:4.9.7-apache
+FROM wordpress:4.9.8-apache
 RUN printf "\n\n\n\n\n\n\n\n\n" | openssl req -x509 -newkey rsa:4096 -keyout /etc/ssl/private/ssl-cert-snakeoil.key -out /etc/ssl/certs/ssl-cert-snakeoil.pem -days 365 -nodes
 COPY log.ini execution.ini /usr/local/etc/php/conf.d/
 RUN apt update && apt upgrade -y && apt install -y mysql-client bsd-mailx zip unzip imagemagick && apt clean
