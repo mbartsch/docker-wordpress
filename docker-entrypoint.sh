@@ -65,6 +65,7 @@ install_wp () {
 	if [ ! -e wp-includes/version.php ]; then
 		echo >&2 "WordPress not found in $PWD - installing now..."
 		chmod g+w /var/www/html
+                chown www-data:www-data /var/www/html
 		if [ ! -e .htaccess ]; then
 			mkhtaccess
 		fi
