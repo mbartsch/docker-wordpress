@@ -97,7 +97,7 @@ PHP
 		fi
 		sudo -u wp-admin -i -- wp core install \
 			--url="${WORDPRESS_HTTP_HOST}" \
-			--title="${WORDPRESS_SITE_TITLE}" \
+			--title=\"${WORDPRESS_SITE_TITLE}\" \
 			--admin_user="${WORDPRESS_ADMIN_USER}" \
 			--admin_password="${WORDPRESS_ADMIN_PASS}" \
 			--admin_email="${WORDPRESS_ADMIN_EMAIL}"
@@ -127,9 +127,15 @@ PHP
 	else
 		sudo -u wp-admin -i -- wp config set WP_DEBUG false --raw --type=constant
 	fi
+        if [ -e "/var/www/html/.update-plugins" ] ; then
+		sudo -u wp-admin -i -- wp plugin upgrade --all
+		rm /var/www/html/.update-plugins
+	fi
 
 
-	# now that we're definitely done writing configuration, let's clear out the relevant envrionment variables (so that stray "phpinfo()" calls don't leak secrets from our code)
+	# now that we're definitely done writing configuration, let's clear out 
+        # the relevant envrionment variables (so that stray "phpinfo()" calls 
+        # don't leak secrets from our code)
 
 	echo -n "Reset permissions to the www-data user..."
 	find . -user wp-admin -exec chown www-data {} \;
