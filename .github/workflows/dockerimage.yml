@@ -15,7 +15,7 @@ jobs:
     - run: echo ::set-output name=sha_short::$(echo ${{ github.sha }} | cut -c 1-8)
       id: vars
     - uses: actions/checkout@v2
-    - name: Build the Docker image
+    - name: Build the Docker image - devel
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
@@ -24,7 +24,8 @@ jobs:
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
       if: ${{ github.ref }} != "master"
-    - name: Build the Docker image
+      plarform: linux/amd64,linux/arm64
+    - name: Build the Docker image - master
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
@@ -33,3 +34,4 @@ jobs:
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
       if: ${{ github.ref }} == "master"
+      plarform: linux/amd64,linux/arm64
