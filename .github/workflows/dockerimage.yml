@@ -23,8 +23,8 @@ jobs:
         imageName: mbartsch/wordpress
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
+        platform: linux/amd64,linux/arm64
       if: ${{ github.ref }} != "master"
-      plarform: linux/amd64,linux/arm64
     - name: Build the Docker image - master
       uses: ilteoood/docker_buildx@master
       with:
@@ -33,5 +33,5 @@ jobs:
         imageName: mbartsch/wordpress
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
-      if: ${{ github.ref }} == "master"
-      plarform: linux/amd64,linux/arm64
+        platform: linux/amd64,linux/arm64
+      if:t${{ github.ref }} == "master"
