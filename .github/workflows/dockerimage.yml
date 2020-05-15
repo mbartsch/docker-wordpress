@@ -25,7 +25,7 @@ jobs:
     - run: echo ${{ steps.wptag.outputs.tag_value }}
       id: echo_wptag_tag
     - name: Build the Docker image - master with tags
-      if: ${{ steps.wptag.outputs.tag_value }}
+      if: contains(steps.wptag.outputs.tag_value,'tags')
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
@@ -34,7 +34,7 @@ jobs:
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
         platform: linux/amd64,linux/arm64
-        buildArg: WPRELASE=${{ steps.wptag.outputs.wptag }}
+        buildArg: WPRELASE=${{ steps.wptag.outputs.tag_value }}
     - name: Build the Docker image - master with latest
       if: ${{ steps.vars.outputs.tag_value }} == 'ref/head/master'
       uses: ilteoood/docker_buildx@master
