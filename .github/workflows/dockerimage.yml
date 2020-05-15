@@ -1,0 +1,35 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: 
+      - master
+      - devel
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo ::set-output name=sha_short::$(echo ${{ github.sha }} | cut -c 1-8)
+      id: vars
+    - uses: actions/checkout@v2
+    - name: Build the Docker image
+      uses: ilteoood/docker_buildx@master
+      with:
+        publish: true
+        tag: devel,${{ steps.vars.outputs.sha_short }}
+        imageName: mbartsch/wordpress
+        dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
+        dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
+      if: ${{ github.ref }} != "master"
+    - name: Build the Docker image
+      uses: ilteoood/docker_buildx@master
+      with:
+        publish: true
+        tag: latest,${{ steps.vars.outputs.sha_short }}
+        imageName: mbartsch/wordpress
+        dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
+        dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
+      if: ${{ github.ref }} == "master"
