@@ -20,15 +20,25 @@ jobs:
       id: buildtag
     - run: echo ::set-output name=tag_value::$(echo ${{ github.ref }} | cut -d \. -f 1-3)
       id: wptag
-    - name: Build the Docker image - master
+    - name: Build the Docker image - master with tags
       if: ${{ steps.wptag.outputs.wptag }}
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
-        tag: latest,${{ steps.vars.outputs.sha_short }},${{ steps.tag.outputs.tag_value }}
+        tag: ${{ steps.vars.outputs.sha_short }},${{ steps.tag.outputs.tag_value }}
         imageName: mbartsch/wordpress
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
         platform: linux/amd64,linux/arm64
         buildArg: WPRELASE=${{ steps.wptag.outputs.wptag }}
+    - name: Build the Docker image - master with latest
+      uses: ilteoood/docker_buildx@master
+      with:
+        publish: true
+        tag: latest,${{ steps.vars.outputs.sha_short }}
+        imageName: mbartsch/wordpress
+        dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
+        dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
+        platform: linux/amd64,linux/arm64
+        buildArg: WPRELASE=latest
         
