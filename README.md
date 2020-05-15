@@ -1,10 +1,10 @@
-This is based on the official wordpress (wordpress:4.9.7)
+This is based on the official wordpress (wordpress:5.4.1-apache)
 
 Added:
 mailx
 zip
 unzip
-mysql client
+mariadb client
 imagemagick
 
 Please note this is what I use internally for my WP sites on 
