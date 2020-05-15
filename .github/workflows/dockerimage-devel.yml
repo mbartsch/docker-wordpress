@@ -20,7 +20,7 @@ jobs:
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
-        tag: devel,${{ steps.vars.outputs.sha_short }},${{ steps.tag.outputs.tag_value }}
+        tag: devel,${{ steps.vars.outputs.sha_short }}-dev,${{ steps.tag.outputs.tag_value }}-dev
         imageName: mbartsch/wordpress
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
