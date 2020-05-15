@@ -27,11 +27,11 @@ jobs:
     - run: echo ${{ steps.buildtag.outputs.tag_value }}
       id: echo_buildtag_tag
     - name: Build the Docker image - master with tags
-      if: contains(steps.wptag.outputs.tag_value,'tags')
+      if: contains(steps.vars.outputs.tag_value,'tags')
       uses: ilteoood/docker_buildx@master
       with:
         publish: true
-        tag: ${{ steps.vars.outputs.sha_short }},${{ steps.tag.outputs.tag_value }}
+        tag: ${{ steps.vars.outputs.sha_short }},${{ steps.buildtag.outputs.tag_value }}
         imageName: mbartsch/wordpress
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
