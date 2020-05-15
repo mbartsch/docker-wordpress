@@ -24,7 +24,7 @@ jobs:
         dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
         dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
         platform: linux/amd64,linux/arm64
-      if: {{ github.ref != 'ref/head/master' }}
+      if: contains(github.ref, "devel")
     - name: Build the Docker image - master
       uses: ilteoood/docker_buildx@master
       with:
