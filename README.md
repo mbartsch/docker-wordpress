@@ -10,3 +10,4 @@ imagemagick
 Please note this is what I use internally for my WP sites on 
 K8S with Docker Containers It may not work for your 
 environment :(
+
