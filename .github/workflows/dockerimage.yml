@@ -46,7 +46,7 @@ jobs:
         platform: linux/amd64,linux/arm64
         buildArg: WPRELASE=${{ steps.wptag.outputs.tag_value }}
     - name: Build the Docker image - master with latest
-      if: github.ref == 'ref/head/master'
+      if: github.ref == 'ref/heads/master'
       uses: ilteoood/docker_buildx@master
       with:
         publish: true

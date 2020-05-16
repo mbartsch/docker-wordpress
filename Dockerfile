@@ -8,7 +8,6 @@ RUN curl -o /usr/local/bin/wp  https://raw.githubusercontent.com/wp-cli/builds/g
 COPY remoteip.conf /etc/apache2/conf-available
 RUN a2enmod ssl 
 RUN a2ensite default-ssl
-RUN apt install -y sudo
 RUN a2enmod remoteip 
 RUN a2enconf remoteip
 RUN sed -i 's/^LogFormat "%h/LogFormat "%a/' /etc/apache2/apache2.conf
